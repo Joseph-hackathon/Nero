@@ -57,6 +57,35 @@ Learning is no longer disposable—it becomes an asset.
   * In-app education
   * A new monetization layer
 
+## Architecture
+
+Nero is designed as a modular, agent-native system combining AI inference, micro-payments, and on-chain identity. The following diagrams illustrate how users, builders, and protocols interact with Nero.
+
+```mermaid
+sequenceDiagram
+    participant User as User (Browser)
+    participant Ext as Nero Chrome Extension
+    participant AI as Nero AI Service (Gemini)
+    participant Wallet as Privy Embedded Wallet
+    participant Pay as x402 Payment Rail
+    participant Chain as Movement M2 (MoveVM)
+    participant NFT as Nero Agent NFT
+
+    User->>Ext: Visit dApp & ask question
+    Ext->>AI: Send question + page context
+    AI->>Ext: Classify query & generate response
+    Ext->>Wallet: Check free quota / balance
+    Wallet->>Pay: Execute micro-payment (if needed)
+    Pay->>Chain: Transfer MOVE to treasury
+    Ext->>NFT: Update agent state (usage, level)
+    Ext->>User: Show explanation & guidance
+```
+> Key Points
+
+- Context-aware AI runs off-chain
+- Payments are streamed via x402
+- Learning progress is persisted on-chain as NFT state
+
 ## Core Components
 
 ### Nero Sentinel (AI Chat)
@@ -77,6 +106,34 @@ All explanations are **context-aware** and delivered in real time.
 
 #### User View
 
+```mermaid
+sequenceDiagram
+    participant User
+    participant Ext as Nero Extension
+    participant Wallet as Privy Wallet
+    participant AI as Nero AI
+    participant Pay as x402
+    participant NFT as Nero Agent NFT
+
+    User->>Ext: Install extension
+    Ext->>Wallet: Create embedded wallet
+    Ext->>NFT: Mint Nero Agent (Level 1)
+
+    User->>Ext: Ask question (Free Tier)
+    Ext->>AI: Analyze context & question
+    AI->>Ext: Return explanation
+    Ext->>NFT: Record usage
+
+    User->>Ext: Ask more questions
+    Ext->>Wallet: Check daily free limit
+    alt Free quota exceeded
+        Wallet->>Pay: Pay per query (MOVE)
+        Pay->>NFT: Increase agent progress
+    end
+
+    NFT->>User: Unlock next-level capabilities
+```
+
 * Simulates real dApp usage with Nero assistance
 * Users can:
   * Ask questions
@@ -87,6 +144,24 @@ All explanations are **context-aware** and delivered in real time.
   * Agent evolution flow
 
 #### Admin Control
+
+```mermaid
+sequenceDiagram
+    participant Admin as dApp Operator
+    participant SDK as Nero SDK / Snippet
+    participant AI as Nero AI Config
+    participant Pay as x402
+    participant Chain as Movement M2
+
+    Admin->>SDK: Integrate Nero into dApp
+    Admin->>AI: Configure AI persona & tone
+    Admin->>AI: Set query pricing
+    Admin->>Pay: Set treasury wallet
+    Admin->>Chain: Deploy config on-chain
+
+    User->>SDK: Use dApp with Nero enabled
+    Pay->>Chain: Stream MOVE to treasury
+```
 
 * dApp operators can configure:
   * AI persona and tone
@@ -115,16 +190,6 @@ Nero uses **x402** to enable real-time micro-payments.
 
 This makes Nero a practical example of **agent-native payment infrastructure**.
 
-## Tech Stack
-
-* **AI**: Google Gemini API (`gemini-3-flash-preview`)
-* **Authentication & Wallets**: Privy
-  * Social login
-  * Embedded wallets
-* **Network**: Movement Network (M2, MoveVM-based Ethereum L2)
-* **Frontend**: React, Tailwind CSS, Inter Typography
-* **Payments**: x402 Protocol
-
 ## Target Audience
 
 ### Users
@@ -144,7 +209,6 @@ This makes Nero a practical example of **agent-native payment infrastructure**.
 Nero is more than a chatbot.
 
 It is:
-
 * An onboarding layer for Web3
 * A real-world example of agentic economies
 * A bridge between AI, payments, and on-chain identity

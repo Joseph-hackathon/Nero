@@ -1,4 +1,4 @@
-# Nero — AI-Powered Web3 Companion
+# Nero: AI-Powered Web3 Companion
 
 **Learn Web3 as You Use It. Pay Only for Real Value.**
 

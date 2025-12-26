@@ -198,7 +198,7 @@ const DemoView: React.FC<DemoViewProps> = ({
                   onPricing={onPricing}
                   detectedDapp={activeDapp}
                   embedded={true}
-                  platformConfig={platform}
+                  platformConfig={platform || undefined}
                 />
               ) : (
                 <div className="h-full flex flex-col items-center justify-center p-12 text-center bg-slate-50 space-y-8">

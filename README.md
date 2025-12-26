@@ -35,7 +35,7 @@ but because **help arrives too late**.
 * No subscriptions, no upfront commitment
 * Users only pay **after value is delivered**
 
-This model dramatically reduces onboarding friction and enables natural conversion.
+> This model dramatically reduces onboarding friction and enables natural conversion.
 
 ### 2. Asset-Backed Learning
 
@@ -44,7 +44,7 @@ This model dramatically reduces onboarding friction and enables natural conversi
 * Learning progress becomes **on-chain growth**
 * As the agent evolves, new capabilities are unlocked
 
-Learning is no longer disposable—it becomes an asset.
+> Learning is no longer disposable it becomes an asset.
 
 ### 3. Native Integration for Builders
 
@@ -59,7 +59,8 @@ Learning is no longer disposable—it becomes an asset.
 
 ## Architecture
 
-Nero is designed as a modular, agent-native system combining AI inference, micro-payments, and on-chain identity. The following diagrams illustrate how users, builders, and protocols interact with Nero.
+Nero is designed as a modular, agent-native system combining AI inference, micro-payments, and on-chain identity.
+The following diagrams illustrate how users, builders, and protocols interact with Nero.
 
 ```mermaid
 sequenceDiagram
@@ -100,7 +101,7 @@ It can explain:
 * DeFi mechanics and liquidity strategies
 * Common risks (approvals, slippage, failed transactions)
 
-All explanations are **context-aware** and delivered in real time.
+> All explanations are **context-aware** and delivered in real time.
 
 ### Simulator Core (Live Demo)
 
@@ -179,7 +180,7 @@ Each user owns a **Nero Agent NFT**, which evolves over time.
   * Advanced analysis features
   * Unique visual identity
 
-This is not a cosmetic NFT—it represents a **functional AI agent**.
+> This is not a cosmetic NFT it represents a **functional AI agent**.
 
 ### x402 Protocol (Micro-Payments)
 
@@ -188,7 +189,7 @@ Nero uses **x402** to enable real-time micro-payments.
 * No subscriptions, no batching delays
 * Enables sustainable Pay-per-Query economics for AI agents
 
-This makes Nero a practical example of **agent-native payment infrastructure**.
+> This makes Nero a practical example of **agent-native payment infrastructure**.
 
 ## Target Audience
 
@@ -223,6 +224,6 @@ It is:
 
 ## Contact
 
-* Website: Coming soon
+* Website: [Nero](https://nero-wu3a.vercel.app/)
 * GitHub: This repository
 * Built for the **Movement ecosystem**

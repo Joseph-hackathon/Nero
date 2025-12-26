@@ -1,0 +1,26 @@
+
+{
+  "manifest_version": 3,
+  "name": "Nero - AI Web3 Companion",
+  "version": "1.0.0",
+  "description": "Real-time AI guidance for Web3 dApps on the Movement Network.",
+  "action": {
+    "default_popup": "index.html",
+    "default_icon": {
+      "16": "https://raw.githubusercontent.com/ant-design/ant-design-icons/master/packages/icons-svg/svg/filled/robot.svg",
+      "48": "https://raw.githubusercontent.com/ant-design/ant-design-icons/master/packages/icons-svg/svg/filled/robot.svg",
+      "128": "https://raw.githubusercontent.com/ant-design/ant-design-icons/master/packages/icons-svg/svg/filled/robot.svg"
+    }
+  },
+  "permissions": [
+    "tabs",
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://app.uniswap.org/*",
+    "https://app.aave.com/*",
+    "https://opensea.io/*",
+    "https://faucet.movementnetwork.xyz/*"
+  ]
+}

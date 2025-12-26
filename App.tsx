@@ -1,0 +1,218 @@
+
+import React, { useState, useEffect, useCallback } from 'react';
+import Hero from './components/Hero';
+import ChatWidget from './components/ChatWidget';
+import Pricing from './components/Pricing';
+import DemoView from './components/DemoView';
+import WidgetIntegration from './components/WidgetIntegration';
+import { UserState, NeroLevel, SKILLS, PaymentHistory, NeroAgent, PLATFORMS, PlatformConfig } from './types';
+import { usePrivy } from './PrivyContext';
+
+const STORAGE_KEY = 'nero_web_state_v6';
+
+const App: React.FC = () => {
+  const { authenticated, user, login, logout, ready } = usePrivy();
+  const [activeTab, setActiveTab] = useState<'home' | 'demo' | 'widget' | 'pricing'>('home');
+  const [activeDapp, setActiveDapp] = useState<string | null>(null);
+  const [dynamicPlatforms, setDynamicPlatforms] = useState<Record<string, PlatformConfig>>(PLATFORMS);
+
+  const [userState, setUserState] = useState<UserState>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) return JSON.parse(saved);
+    return {
+      walletAddress: null,
+      freeQuestionsRemaining: 10,
+      xp: 0,
+      level: NeroLevel.NEWBIE,
+      balance: 0.150,
+      network: 'Movement M2',
+      transactionsCount: 0,
+      unlockedSkills: [],
+      paymentHistory: [],
+      agents: {}
+    };
+  });
+
+  useEffect(() => {
+    if (ready && user?.wallet?.address) {
+      setUserState(prev => ({ ...prev, walletAddress: user.wallet!.address }));
+    } else if (ready && !authenticated) {
+      setUserState(prev => ({ ...prev, walletAddress: null }));
+    }
+  }, [user, authenticated, ready]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(userState));
+  }, [userState]);
+
+  const handleUpdatePlatform = (id: string, newConfig: PlatformConfig) => {
+    setDynamicPlatforms(prev => ({ ...prev, [id]: newConfig }));
+  };
+
+  const handleMintAgent = (platformId: string) => {
+    if (!userState.walletAddress) { login(); return; }
+    setUserState(prev => {
+      if (prev.agents[platformId]) return prev;
+      const newAgent: NeroAgent = {
+        platformId,
+        tokenId: Math.floor(Math.random() * 1000000).toString(),
+        level: NeroLevel.NEWBIE,
+        xp: 0,
+        mintedAt: Date.now()
+      };
+      return {
+        ...prev,
+        agents: { ...prev.agents, [platformId]: newAgent },
+        paymentHistory: [{ id: 'TX-' + Math.random().toString(36).substr(2, 6).toUpperCase(), type: 'mint', token: 'MOVE', amount: 0, timestamp: Date.now() }, ...prev.paymentHistory].slice(0, 30)
+      } as UserState;
+    });
+  };
+
+  const processActivity = useCallback((type: 'query' | 'transaction', isPaid: boolean = false) => {
+    const platformFee = activeDapp ? dynamicPlatforms[activeDapp].feePerQuery : 0.005;
+    setUserState(prev => {
+      const actualIsPaid = type === 'query' ? (prev.freeQuestionsRemaining <= 0) : isPaid;
+      const cost = actualIsPaid ? platformFee : 0;
+      if (actualIsPaid && prev.balance < cost) return prev;
+      
+      const xpGain = type === 'transaction' ? 150 : (actualIsPaid ? 80 : 30);
+      let updatedAgents = { ...prev.agents };
+      if (activeDapp && updatedAgents[activeDapp]) {
+        const agent = updatedAgents[activeDapp];
+        const newXp = agent.xp + xpGain;
+        let newLevel = agent.level;
+        if (newXp >= 10000) newLevel = NeroLevel.MASTER;
+        else if (newXp >= 4000) newLevel = NeroLevel.EXPERT;
+        else if (newXp >= 1500) newLevel = NeroLevel.STRATEGIST;
+        else if (newXp >= 500) newLevel = NeroLevel.EXPLORER;
+        updatedAgents[activeDapp] = { ...agent, xp: newXp, level: newLevel };
+      }
+      return {
+        ...prev,
+        agents: updatedAgents,
+        xp: prev.xp + xpGain,
+        freeQuestionsRemaining: type === 'query' && !actualIsPaid ? Math.max(0, prev.freeQuestionsRemaining - 1) : prev.freeQuestionsRemaining,
+        balance: parseFloat((prev.balance - cost).toFixed(4)),
+        paymentHistory: [{ id: 'TX-' + Math.random().toString(36).substr(2, 6).toUpperCase(), type: type === 'query' ? 'query' : 'evolution', token: 'MOVE', amount: cost, timestamp: Date.now() }, ...prev.paymentHistory].slice(0, 30)
+      } as UserState;
+    });
+  }, [activeDapp, dynamicPlatforms]);
+
+  const topUpBalance = (amount: number, token: 'MOVE' | 'USDC' | 'USDT' = 'MOVE') => {
+    setUserState(prev => ({
+      ...prev,
+      balance: prev.balance + amount,
+      paymentHistory: [{ id: 'TOP-' + Math.random().toString(36).substr(2, 6).toUpperCase(), type: 'topup', token, amount, timestamp: Date.now() }, ...prev.paymentHistory].slice(0, 30)
+    } as UserState));
+  };
+
+  if (!ready) return null;
+
+  return (
+    <div className="min-h-screen flex flex-col bg-white">
+      <header className="fixed top-0 w-full z-[100] bg-white border-b border-slate-100 h-16 flex items-center">
+        <div className="max-w-7xl mx-auto px-6 w-full flex justify-between items-center">
+          <div className="flex items-center space-x-2.5 cursor-pointer" onClick={() => setActiveTab('home')}>
+            <div className="w-7 h-7 bg-indigo-600 rounded flex items-center justify-center">
+              <img src="https://raw.githubusercontent.com/ant-design/ant-design-icons/master/packages/icons-svg/svg/filled/robot.svg" className="w-4.5 h-4.5 invert" alt="Nero" />
+            </div>
+            <span className="text-base font-bold tracking-tight text-slate-900">Nero Protocol</span>
+          </div>
+          
+          <nav className="hidden md:flex items-center space-x-1">
+            {[
+              { id: 'home', label: 'Overview' },
+              { id: 'demo', label: 'Live SDK' },
+              { id: 'widget', label: 'Developers' },
+              { id: 'pricing', label: 'Pricing' }
+            ].map(tab => (
+              <button 
+                key={tab.id} 
+                onClick={() => setActiveTab(tab.id as any)} 
+                className={`px-4 py-2 text-[13px] font-semibold transition-all rounded-full ${
+                  activeTab === tab.id ? 'text-indigo-600 bg-indigo-50/60' : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+            <div className="w-px h-4 bg-slate-200 mx-4" />
+            {authenticated ? (
+              <div className="flex items-center space-x-4">
+                <div className="text-[13px] font-bold text-slate-900 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-full">
+                  {userState.balance.toFixed(3)} MOVE
+                </div>
+                <button onClick={logout} className="text-[13px] font-semibold text-slate-400 hover:text-slate-900">Sign Out</button>
+              </div>
+            ) : (
+              <button onClick={login} className="bg-indigo-600 text-white px-5 py-2 rounded-full font-bold text-[13px] hover:bg-indigo-700 transition-shadow shadow-lg shadow-indigo-100">Get Started</button>
+            )}
+          </nav>
+        </div>
+      </header>
+
+      <main className="flex-1 pt-16">
+        <div className="animate-in fade-in duration-700">
+          {activeTab === 'home' && <Hero onStart={() => setActiveTab('demo')} />}
+          {activeTab === 'demo' && (
+            <div className="bg-white border-b border-slate-100 py-4 shadow-sm">
+              <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
+                <div className="flex items-center space-x-6">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Select Platform</span>
+                  <div className="flex space-x-3">
+                    {Object.keys(dynamicPlatforms).map(id => (
+                      <button key={id} onClick={() => setActiveDapp(id)}
+                        className={`flex items-center space-x-2.5 px-4 py-2 rounded-xl border transition-all ${
+                          activeDapp === id 
+                          ? 'bg-slate-900 border-slate-900 text-white shadow-md' 
+                          : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                        <img src={dynamicPlatforms[id].logo} className="w-5 h-5 object-contain" alt={id} />
+                        <span className="text-[12px] font-bold tracking-tight">{id}</span>
+                      </button>
+                    ))}
+                    <button onClick={() => setActiveDapp(null)}
+                      className={`px-4 py-2 rounded-xl border transition-all ${activeDapp === null ? 'bg-indigo-600 border-indigo-600 text-white shadow-md' : 'bg-white border-slate-200 text-slate-400'}`}>
+                      <span className="text-[12px] font-bold tracking-tight">Ecosystem</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {activeTab === 'demo' && (
+            <DemoView 
+              user={userState} 
+              onQuery={processActivity} 
+              onConnect={login}
+              onMint={handleMintAgent}
+              onTopUp={topUpBalance}
+              onPricing={() => setActiveTab('pricing')}
+              activeDapp={activeDapp}
+              setActiveDapp={setActiveDapp}
+              platforms={dynamicPlatforms}
+              onUpdatePlatform={handleUpdatePlatform}
+            />
+          )}
+          {activeTab === 'widget' && <WidgetIntegration />}
+          {activeTab === 'pricing' && <Pricing />}
+        </div>
+      </main>
+
+      <footer className="py-20 border-t border-slate-100 bg-white">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-8 text-slate-400 text-[12px] font-semibold">
+          <div className="flex items-center space-x-6">
+            <span>© 2025 Nero Protocol</span>
+            <a href="#" className="hover:text-indigo-600 transition-colors">Privacy Policy</a>
+            <a href="#" className="hover:text-indigo-600 transition-colors">Developer Terms</a>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+            <span className="uppercase tracking-widest text-[10px]">Movement M2 Active</span>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+export default App;

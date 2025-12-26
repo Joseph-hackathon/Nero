@@ -1,0 +1,8 @@
+{
+  "name": "Nero - AI-Powered Web3 Companion",
+  "description": "Nero is an AI companion that teaches Web3 in real-time, lets users learn for free first, pay per value later, and turns learning into an on-chain asset.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}

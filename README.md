@@ -191,6 +191,151 @@ Nero uses **x402** to enable real-time micro-payments.
 
 > This makes Nero a practical example of **agent-native payment infrastructure**.
 
+## How to use tech
+
+### Smart Contract (Move Language)
+
+Nero uses Move smart contracts on the Movement Network for NFT minting and management.
+
+#### Contract Structure
+
+**Key Functions:**
+- `initialize`: Collection initialization (admin only)
+- `create_nft`: NFT creation (admin only)
+- `mint_nft`: User NFT minting
+- `process_payment`: Payment processing and event emission
+
+**Contract Code:**
+```move
+module nero_protocol::nft {
+    struct NFTMetadata has store, drop {
+        name: String,
+        description: String,
+        image_uri: String,
+        admin_address: address,
+        price_per_question_move: u64,
+        price_per_question_usdt: u64,
+        price_per_question_usdc: u64,
+    }
+    
+    #[event]
+    struct MintEvent has drop, store {
+        token_id: String,
+        minter: address,
+        admin_address: address,
+    }
+}
+```
+
+#### Integration in Project
+
+The smart contract is integrated with the frontend via `services/nftService.ts`:
+
+1. **NFT Minting**: `mintNeroAgent()` calls the backend API to generate transactions, which are signed and submitted via the user's wallet.
+
+2. **NFT Creation (Admin)**: `buildCreateNFTTransaction()` is used in the admin console to create NFTs.
+
+3. **Transaction Processing**: The backend API interacts with the Move contract to create blockchain transactions.
+
+**Related Files:**
+- Contract code: [`contracts/sources/nft.move`](./contracts/sources/nft.move)
+- Service layer: [`services/nftService.ts`](./services/nftService.ts)
+- Type definitions: [`types.ts`](./types.ts)
+
+**Usage Example:**
+```typescript
+// Mint NFT
+const mintResponse = await mintNeroAgent(
+  walletAddress,
+  platformId,
+  platformName
+);
+
+// Admin NFT creation
+const transaction = await buildCreateNFTTransaction(
+  tokenName,
+  tokenDescription,
+  imageUri,
+  priceMove,
+  priceUSDT,
+  priceUSDC
+);
+```
+
+### Privy Authentication Integration
+
+Nero uses **Privy SDK** for user authentication and wallet management.
+
+#### Privy Architecture
+
+**Key Components:**
+
+1. **PrivyProvider** (`PrivyContext.tsx`):
+   - Wraps Privy SDK in React Context
+   - Provides authentication state, user info, and wallet data globally
+   - Accessible via custom hook `usePrivy`
+
+2. **Configuration** (`index.tsx`):
+   - Login methods: Email, Google, Wallet
+   - Automatic Embedded Wallet creation
+   - External wallet support (Nightly, etc.)
+
+**Privy Integration Code:**
+```typescript
+<PrivyProvider
+  appId={import.meta.env.VITE_PRIVY_APP_ID}
+  config={{
+    loginMethods: ['email', 'wallet', 'google'],
+    embeddedWallets: {
+      createOnLogin: 'users-without-wallets',
+      noPromptOnSignature: true
+    },
+    externalWallets: {
+      coinbaseWallet: {
+        connectionOptions: 'smartWalletOnly',
+      },
+    },
+  }}
+>
+  <App />
+</PrivyProvider>
+```
+
+#### Usage in Project
+
+**In App.tsx:**
+
+1. **Authentication State Management**:
+```typescript
+const { authenticated, user, login, logout, ready } = usePrivy();
+```
+
+2. **Get Wallet Address**:
+```typescript
+const walletAddress = user?.wallet?.address;
+```
+
+3. **Login/Logout**:
+```typescript
+<button onClick={login}>Get Started</button>
+await logout();
+```
+
+4. **Network Detection & Switching**:
+   - Automatically attempts to switch to Movement Testnet after Privy connection
+   - Auto-detects network changes via event listeners for Nightly wallet
+
+**Key Features:**
+- **Auto wallet creation**: Embedded Wallet auto-creation for users without wallets
+- **Multiple login methods**: Email, Google, external wallets
+- **Network management**: Automatic Movement Testnet switching and detection
+- **State persistence**: User state stored in localStorage (per wallet address)
+
+**Related Files:**
+- Privy Context: [`PrivyContext.tsx`](./PrivyContext.tsx)
+- App entry point: [`index.tsx`](./index.tsx)
+- Main app: [`App.tsx`](./App.tsx)
+
 ## Target Audience
 
 ### Users

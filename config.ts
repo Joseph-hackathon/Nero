@@ -28,7 +28,7 @@ const getEnvironmentConfig = (): AppConfig => {
     x402Endpoint:
       import.meta.env.VITE_X402_ENDPOINT || "https://x402.movement.network/api/pay",
     movementRpc:
-      import.meta.env.VITE_MOVEMENT_RPC_URL || "https://testnet.movementlabs.xyz",
+      import.meta.env.VITE_MOVEMENT_RPC_URL || "https://testnet.movementnetwork.xyz/v1",
     environment: isProd
       ? "production"
       : env === "staging"

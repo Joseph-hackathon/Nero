@@ -183,52 +183,28 @@ const App: React.FC = () => {
       // Fetch actual wallet balance from Movement network
       const fetchWalletBalance = async () => {
         try {
-          // First, check if we're on Movement testnet
+          // After Privy connection, try to switch to Movement Testnet automatically
+          // Wait a bit for Privy connection to complete
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Try to switch to Movement Testnet automatically
+          await switchToMovementTestnet();
+          
+          // Wait a bit for network switch
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Check if we're on Movement testnet
           const isOnMovementTestnet = await checkNetwork();
           
           if (!isOnMovementTestnet) {
-            // Try to switch automatically
-            await switchToMovementTestnet();
-            // Wait a bit for network switch
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            // Check again
-            const isNowOnMovementTestnet = await checkNetwork();
-            if (!isNowOnMovementTestnet) {
-              // Still not on Movement testnet, set balance to 0 and show warning
-              if (saved) {
-                try {
-                  const savedState = JSON.parse(saved);
-                  setUserState({
-                    ...savedState,
-                    walletAddress,
-                    balance: 0,
-                  });
-                } catch (error) {
-                  setUserState((prev) => ({
-                    ...prev,
-                    walletAddress,
-                    balance: 0,
-                  }));
-                }
-              } else {
-                setUserState({
-                  walletAddress,
-                  freeQuestionsRemaining: 10,
-                  xp: 0,
-                  level: NeroLevel.NEWBIE,
-                  balance: 0,
-                  network: "Movement M2",
-                  transactionsCount: 0,
-                  unlockedSkills: [],
-                  paymentHistory: [],
-                  agents: {},
-                });
-              }
-              return;
-            }
+            // Still not on Movement testnet, show warning but still try to fetch balance
+            setNetworkWarning({
+              show: true,
+              message: "Please switch to Movement Testnet in your wallet to view MOVE token balance. If Privy prompted to change network, please cancel and switch manually."
+            });
           }
           
-          // Fetch actual balance from Movement network
+          // Fetch actual balance from Movement network (will return 0 if not on Movement Testnet)
           const balance = await checkBalance(walletAddress);
           
           if (saved) {
@@ -685,73 +661,12 @@ const App: React.FC = () => {
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center space-x-3">
-                  {/* Direct Nightly wallet connection button */}
-                  {typeof window !== 'undefined' && (window as any).aptos && (
-                    <button
-                      onClick={async () => {
-                        try {
-                          const aptos = (window as any).aptos;
-                          const response = await aptos.connect();
-                          const walletAddress = response.address;
-                          
-                          // Check network and switch to testnet if needed
-                          try {
-                            const network = await aptos.network();
-                            if (network !== 'testnet' && !network?.includes('movement') && !network?.includes('testnet')) {
-                              await aptos.switchNetwork('testnet');
-                            }
-                          } catch (networkError) {
-                            logger.warn("Network Switch", "Could not switch network automatically");
-                          }
-                          
-                          // Update user state with Nightly wallet
-                          const balance = await checkBalance(walletAddress);
-                          setUserState({
-                            walletAddress,
-                            freeQuestionsRemaining: 10,
-                            xp: 0,
-                            level: NeroLevel.NEWBIE,
-                            balance,
-                            network: "Movement M2",
-                            transactionsCount: 0,
-                            unlockedSkills: [],
-                            paymentHistory: [],
-                            agents: {},
-                          });
-                          
-                          // Set up network change listener
-                          if (aptos.onNetworkChange) {
-                            aptos.onNetworkChange((newNetwork: string) => {
-                              const isMovementTestnet = newNetwork === 'testnet' || newNetwork?.includes('movement') || newNetwork?.includes('testnet');
-                              if (isMovementTestnet && walletAddress) {
-                                checkBalance(walletAddress).then(balance => {
-                                  setUserState((prev) => ({
-                                    ...prev,
-                                    balance,
-                                  }));
-                                });
-                                setNetworkWarning({ show: false, message: "" });
-                              }
-                            });
-                          }
-                        } catch (error: any) {
-                          logger.error("Nightly Connection", error);
-                          alert("Nightly 지갑 연결에 실패했습니다. 지갑이 설치되어 있고 Movement Testnet으로 설정되어 있는지 확인해주세요.");
-                        }
-                      }}
-                      className="bg-purple-600 text-white px-4 py-2 rounded-full font-bold text-[12px] hover:bg-purple-700 transition-shadow shadow-lg shadow-purple-100"
-                    >
-                      Connect Nightly
-                    </button>
-                  )}
-                  <button
-                    onClick={login}
-                    className="bg-indigo-600 text-white px-5 py-2 rounded-full font-bold text-[13px] hover:bg-indigo-700 transition-shadow shadow-lg shadow-indigo-100"
-                  >
-                    Get Started
-                  </button>
-                </div>
+                <button
+                  onClick={login}
+                  className="bg-indigo-600 text-white px-5 py-2 rounded-full font-bold text-[13px] hover:bg-indigo-700 transition-shadow shadow-lg shadow-indigo-100"
+                >
+                  Get Started
+                </button>
               )}
             </nav>
           </div>

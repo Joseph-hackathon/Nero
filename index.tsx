@@ -29,11 +29,11 @@ root.render(
           coinbaseWallet: {
             connectionOptions: 'smartWalletOnly',
           },
-          // Privy automatically detects installed wallets
+          // Disable network switching for external wallets to prevent Ethereum network prompts
           // Nightly wallet will appear if installed in the browser
         },
-        // Privy automatically detects installed browser extension wallets
-        // When user clicks "Connect Wallet", all installed wallets including Nightly will be shown
+        // Disable automatic network switching to prevent Ethereum network change prompts
+        // Users will connect with their current network (Movement Testnet)
       }}
     >
       <App />

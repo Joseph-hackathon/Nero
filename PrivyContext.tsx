@@ -83,11 +83,10 @@ export const PrivyProvider: React.FC<{
           coinbaseWallet: {
             connectionOptions: 'smartWalletOnly',
           },
-          // Privy automatically detects installed wallets
-          // Nightly wallet will appear if installed in the browser
+          // Note: Privy may prompt for network switching for external wallets
+          // For Movement network, users should connect Nightly wallet directly
+          // or cancel the network switch prompt and manually switch to Movement Testnet
         },
-        // Privy automatically detects installed browser extension wallets
-        // When user clicks "Connect Wallet", all installed wallets including Nightly will be shown
       }}
     >
       <PrivyContextProvider>{children}</PrivyContextProvider>

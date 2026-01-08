@@ -48,6 +48,10 @@ const App: React.FC = () => {
     txHash?: string;
     amount?: number;
   } | null>(null);
+  const [networkWarning, setNetworkWarning] = useState<{
+    show: boolean;
+    message: string;
+  }>({ show: false, message: "" });
 
   const getStorageKey = (walletAddress: string | null) => {
     if (!walletAddress) return `${STORAGE_KEY_PREFIX}_guest`;
@@ -76,12 +80,76 @@ const App: React.FC = () => {
       const storageKey = getStorageKey(walletAddress);
       const saved = localStorage.getItem(storageKey);
       
-      // Switch to Movement Testnet if using Nightly wallet
-      const switchToMovementTestnet = async () => {
-        if (typeof window !== 'undefined' && (window as any).nightly) {
+      // Check if wallet is on Movement Testnet
+      const checkNetwork = async () => {
+        if (typeof window !== 'undefined' && (window as any).aptos) {
+          try {
+            const aptos = (window as any).aptos;
+            // Get current network
+            const network = await aptos.network();
+            const isMovementTestnet = network === 'testnet' || network?.includes('movement') || network?.includes('testnet');
+            
+            if (!isMovementTestnet) {
+              // Show warning to switch to Movement Testnet
+              setNetworkWarning({
+                show: true,
+                message: "Please switch to Movement Testnet in your wallet to view MOVE token balance."
+              });
+              return false;
+            } else {
+              setNetworkWarning({ show: false, message: "" });
+              return true;
+            }
+          } catch (error) {
+            logger.warn("Network Check", "Could not check network");
+            // If we can't check, assume it's correct and try to fetch balance
+            return true;
+          }
+        } else if (typeof window !== 'undefined' && (window as any).nightly) {
           try {
             const nightly = (window as any).nightly;
-            // Nightly wallet: switch to Movement testnet
+            // Try to get network from Nightly
+            if (nightly.network) {
+              const network = await nightly.network();
+              const isMovementTestnet = network === 'testnet' || network?.includes('movement') || network?.includes('testnet');
+              
+              if (!isMovementTestnet) {
+                setNetworkWarning({
+                  show: true,
+                  message: "Please switch to Movement Testnet in your wallet to view MOVE token balance."
+                });
+                return false;
+              } else {
+                setNetworkWarning({ show: false, message: "" });
+                return true;
+              }
+            }
+          } catch (error) {
+            logger.warn("Network Check", "Could not check Nightly network");
+          }
+        }
+        // Default: assume correct network if we can't check
+        return true;
+      };
+
+      // Switch to Movement Testnet if using Nightly wallet
+      const switchToMovementTestnet = async () => {
+        if (typeof window !== 'undefined' && (window as any).aptos) {
+          try {
+            const aptos = (window as any).aptos;
+            // Try to switch to testnet (Movement testnet)
+            await aptos.switchNetwork('testnet');
+            setNetworkWarning({ show: false, message: "" });
+          } catch (networkError: any) {
+            logger.warn("Network Switch", `Could not switch to Movement testnet: ${networkError.message || networkError}`);
+            setNetworkWarning({
+              show: true,
+              message: "Please switch to Movement Testnet in your wallet to view MOVE token balance."
+            });
+          }
+        } else if (typeof window !== 'undefined' && (window as any).nightly) {
+          try {
+            const nightly = (window as any).nightly;
             // Movement testnet network info
             const movementTestnet = {
               chainId: 'movement-testnet',
@@ -92,12 +160,22 @@ const App: React.FC = () => {
             // Try to switch network if supported
             if (nightly.switchNetwork) {
               await nightly.switchNetwork(movementTestnet);
+              setNetworkWarning({ show: false, message: "" });
             } else if (nightly.aptos?.switchNetwork) {
               await nightly.aptos.switchNetwork(movementTestnet);
+              setNetworkWarning({ show: false, message: "" });
+            } else {
+              setNetworkWarning({
+                show: true,
+                message: "Please switch to Movement Testnet in your wallet to view MOVE token balance."
+              });
             }
           } catch (networkError: any) {
             logger.warn("Network Switch", `Could not switch to Movement testnet: ${networkError.message || networkError}`);
-            // Continue anyway - user can manually switch
+            setNetworkWarning({
+              show: true,
+              message: "Please switch to Movement Testnet in your wallet to view MOVE token balance."
+            });
           }
         }
       };
@@ -105,8 +183,50 @@ const App: React.FC = () => {
       // Fetch actual wallet balance from Movement network
       const fetchWalletBalance = async () => {
         try {
-          // First, try to switch to Movement testnet
-          await switchToMovementTestnet();
+          // First, check if we're on Movement testnet
+          const isOnMovementTestnet = await checkNetwork();
+          
+          if (!isOnMovementTestnet) {
+            // Try to switch automatically
+            await switchToMovementTestnet();
+            // Wait a bit for network switch
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            // Check again
+            const isNowOnMovementTestnet = await checkNetwork();
+            if (!isNowOnMovementTestnet) {
+              // Still not on Movement testnet, set balance to 0 and show warning
+              if (saved) {
+                try {
+                  const savedState = JSON.parse(saved);
+                  setUserState({
+                    ...savedState,
+                    walletAddress,
+                    balance: 0,
+                  });
+                } catch (error) {
+                  setUserState((prev) => ({
+                    ...prev,
+                    walletAddress,
+                    balance: 0,
+                  }));
+                }
+              } else {
+                setUserState({
+                  walletAddress,
+                  freeQuestionsRemaining: 10,
+                  xp: 0,
+                  level: NeroLevel.NEWBIE,
+                  balance: 0,
+                  network: "Movement M2",
+                  transactionsCount: 0,
+                  unlockedSkills: [],
+                  paymentHistory: [],
+                  agents: {},
+                });
+              }
+              return;
+            }
+          }
           
           // Fetch actual balance from Movement network
           const balance = await checkBalance(walletAddress);
@@ -177,6 +297,45 @@ const App: React.FC = () => {
       };
 
       fetchWalletBalance();
+
+      // Listen for network changes (for Nightly/Aptos wallets)
+      const setupNetworkListener = () => {
+        if (typeof window !== 'undefined' && (window as any).aptos) {
+          const aptos = (window as any).aptos;
+          
+          // Listen for network changes
+          if (aptos.onNetworkChange) {
+            aptos.onNetworkChange((newNetwork: string) => {
+              logger.info("Network Change", `Network changed to: ${newNetwork}`);
+              const isMovementTestnet = newNetwork === 'testnet' || newNetwork?.includes('movement') || newNetwork?.includes('testnet');
+              
+              if (isMovementTestnet) {
+                setNetworkWarning({ show: false, message: "" });
+                // Fetch balance when network changes to Movement testnet
+                if (walletAddress) {
+                  checkBalance(walletAddress).then(balance => {
+                    setUserState((prev) => ({
+                      ...prev,
+                      balance,
+                    }));
+                  });
+                }
+              } else {
+                setNetworkWarning({
+                  show: true,
+                  message: "Please switch to Movement Testnet in your wallet to view MOVE token balance."
+                });
+                setUserState((prev) => ({
+                  ...prev,
+                  balance: 0,
+                }));
+              }
+            });
+          }
+        }
+      };
+
+      setupNetworkListener();
     } else if (ready && !authenticated) {
       // Clear state on logout
       setUserState({
@@ -191,6 +350,7 @@ const App: React.FC = () => {
         paymentHistory: [],
         agents: {},
       });
+      setNetworkWarning({ show: false, message: "" });
     }
   }, [user, authenticated, ready]);
 
@@ -508,9 +668,15 @@ const App: React.FC = () => {
               <div className="w-px h-4 bg-slate-200 mx-4" />
               {authenticated ? (
                 <div className="flex items-center space-x-4">
-                  <div className="text-[13px] font-bold text-slate-900 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-full">
-                    {userState.balance.toFixed(3)} MOVE
-                  </div>
+                  {networkWarning.show ? (
+                    <div className="text-[11px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full max-w-xs">
+                      {networkWarning.message}
+                    </div>
+                  ) : (
+                    <div className="text-[13px] font-bold text-slate-900 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-full">
+                      {userState.balance.toFixed(3)} MOVE
+                    </div>
+                  )}
                   <button
                     onClick={logout}
                     className="text-[13px] font-semibold text-slate-400 hover:text-slate-900"

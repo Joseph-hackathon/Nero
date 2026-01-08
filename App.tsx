@@ -152,9 +152,9 @@ const App: React.FC = () => {
             const nightly = (window as any).nightly;
             // Movement testnet network info
             const movementTestnet = {
-              chainId: 'movement-testnet',
+              chainId: '250',
               name: 'Movement Testnet',
-              rpcUrl: import.meta.env.VITE_MOVEMENT_RPC_URL || 'https://testnet.movementlabs.xyz',
+              rpcUrl: import.meta.env.VITE_MOVEMENT_RPC_URL || 'https://testnet.movementnetwork.xyz/v1',
             };
             
             // Try to switch network if supported

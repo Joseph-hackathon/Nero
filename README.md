@@ -2,6 +2,8 @@
 
 **Learn Web3 as You Use It. Pay Only for Real Value.**
 
+[Smart Contract](https://github.com/Joseph-hackathon/Nero/tree/main#smart-contract-move-language) | [Privy](https://github.com/Joseph-hackathon/Nero/tree/main#privy-authentication-integration) | [x402 Protocol](https://github.com/Joseph-hackathon/Nero/tree/main#x402-protocol-micro-payments-1)
+
 ## Overview
 
 **Nero** is an **AI-powered Web3 onboarding companion** optimized for the

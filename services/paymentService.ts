@@ -27,9 +27,9 @@ export interface PaymentResult {
 
 // x402 Payment Rail endpoint (placeholder - to be configured)
 const X402_ENDPOINT =
-  process.env.X402_ENDPOINT || "https://x402.movement.network/api/pay";
+  import.meta.env.VITE_X402_ENDPOINT || "https://x402.movement.network/api/pay";
 const MOVEMENT_RPC =
-  process.env.MOVEMENT_RPC || "https://mainnet.movement.network/v1";
+  import.meta.env.VITE_MOVEMENT_RPC_URL || "https://testnet.movementlabs.xyz";
 
 /**
  * Execute a micro-payment via x402 protocol
@@ -142,12 +142,55 @@ export async function checkBalance(walletAddress: string): Promise<number> {
   try {
     if (!walletAddress) return 0;
 
-    // In production, this would query Movement RPC
-    // const response = await fetch(`${MOVEMENT_RPC}/account/${walletAddress}`);
-    // const data = await response.json();
-    // return data.resources.find(r => r.type.includes('MOVE'))?.amount || 0;
+    // Query Movement RPC for account balance
+    try {
+      // Movement network uses Aptos-compatible API
+      const response = await fetch(`${MOVEMENT_RPC}/v1/accounts/${walletAddress}/resources`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-    return 0.15; // Placeholder default balance
+      if (response.ok) {
+        const resources = await response.json();
+        // Find MOVE token balance (0x1::coin::CoinStore<0x1::aptos_coin::AptosCoin>)
+        const coinStore = resources.find((r: any) => 
+          r.type?.includes('CoinStore') || r.type?.includes('coin')
+        );
+        
+        if (coinStore?.data?.coin?.value) {
+          // Convert from smallest unit (octas) to MOVE
+          const balance = parseInt(coinStore.data.coin.value) / 100000000;
+          return balance;
+        }
+      }
+    } catch (rpcError) {
+      console.warn("RPC balance check failed, using fallback:", rpcError);
+    }
+
+    // Fallback: try to get balance via account info
+    try {
+      const accountResponse = await fetch(`${MOVEMENT_RPC}/v1/accounts/${walletAddress}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (accountResponse.ok) {
+        const accountData = await accountResponse.json();
+        // Some Movement RPC implementations return balance directly
+        if (accountData.balance) {
+          return parseFloat(accountData.balance) / 100000000;
+        }
+      }
+    } catch (accountError) {
+      console.warn("Account balance check failed:", accountError);
+    }
+
+    // If all else fails, return 0 (user can still use the app)
+    return 0;
   } catch (error) {
     console.error("Balance check error:", error);
     return 0;

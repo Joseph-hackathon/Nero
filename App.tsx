@@ -24,6 +24,7 @@ import { mintNeroAgent } from "./services/nftService";
 import {
   executePayment,
   validateSufficientBalance,
+  checkBalance,
 } from "./services/paymentService";
 import { logger } from "./config";
 
@@ -75,35 +76,107 @@ const App: React.FC = () => {
       const storageKey = getStorageKey(walletAddress);
       const saved = localStorage.getItem(storageKey);
       
-      if (saved) {
-        try {
-          const savedState = JSON.parse(saved);
-          setUserState({
-            ...savedState,
-            walletAddress,
-          });
-        } catch (error) {
-          logger.error("Storage", "Failed to parse saved state, using defaults");
-          setUserState((prev) => ({
-            ...prev,
-            walletAddress,
-          }));
+      // Switch to Movement Testnet if using Nightly wallet
+      const switchToMovementTestnet = async () => {
+        if (typeof window !== 'undefined' && (window as any).nightly) {
+          try {
+            const nightly = (window as any).nightly;
+            // Nightly wallet: switch to Movement testnet
+            // Movement testnet network info
+            const movementTestnet = {
+              chainId: 'movement-testnet',
+              name: 'Movement Testnet',
+              rpcUrl: import.meta.env.VITE_MOVEMENT_RPC_URL || 'https://testnet.movementlabs.xyz',
+            };
+            
+            // Try to switch network if supported
+            if (nightly.switchNetwork) {
+              await nightly.switchNetwork(movementTestnet);
+            } else if (nightly.aptos?.switchNetwork) {
+              await nightly.aptos.switchNetwork(movementTestnet);
+            }
+          } catch (networkError: any) {
+            logger.warn("Network Switch", `Could not switch to Movement testnet: ${networkError.message || networkError}`);
+            // Continue anyway - user can manually switch
+          }
         }
-      } else {
-        // New user - start fresh
-        setUserState({
-          walletAddress,
-          freeQuestionsRemaining: 10,
-          xp: 0,
-          level: NeroLevel.NEWBIE,
-          balance: 0.15,
-          network: "Movement M2",
-          transactionsCount: 0,
-          unlockedSkills: [],
-          paymentHistory: [],
-          agents: {},
-        });
-      }
+      };
+
+      // Fetch actual wallet balance from Movement network
+      const fetchWalletBalance = async () => {
+        try {
+          // First, try to switch to Movement testnet
+          await switchToMovementTestnet();
+          
+          // Fetch actual balance from Movement network
+          const balance = await checkBalance(walletAddress);
+          
+          if (saved) {
+            try {
+              const savedState = JSON.parse(saved);
+              setUserState({
+                ...savedState,
+                walletAddress,
+                balance, // Update with actual balance
+              });
+            } catch (error) {
+              logger.error("Storage", "Failed to parse saved state, using defaults");
+              setUserState((prev) => ({
+                ...prev,
+                walletAddress,
+                balance,
+              }));
+            }
+          } else {
+            // New user - start fresh with actual balance
+            setUserState({
+              walletAddress,
+              freeQuestionsRemaining: 10,
+              xp: 0,
+              level: NeroLevel.NEWBIE,
+              balance,
+              network: "Movement M2",
+              transactionsCount: 0,
+              unlockedSkills: [],
+              paymentHistory: [],
+              agents: {},
+            });
+          }
+        } catch (error) {
+          logger.error("Balance Fetch", "Failed to fetch wallet balance");
+          // Fallback to saved state or default
+          if (saved) {
+            try {
+              const savedState = JSON.parse(saved);
+              setUserState({
+                ...savedState,
+                walletAddress,
+              });
+            } catch (parseError) {
+              setUserState((prev) => ({
+                ...prev,
+                walletAddress,
+                balance: 0,
+              }));
+            }
+          } else {
+            setUserState({
+              walletAddress,
+              freeQuestionsRemaining: 10,
+              xp: 0,
+              level: NeroLevel.NEWBIE,
+              balance: 0,
+              network: "Movement M2",
+              transactionsCount: 0,
+              unlockedSkills: [],
+              paymentHistory: [],
+              agents: {},
+            });
+          }
+        }
+      };
+
+      fetchWalletBalance();
     } else if (ready && !authenticated) {
       // Clear state on logout
       setUserState({
@@ -111,7 +184,7 @@ const App: React.FC = () => {
         freeQuestionsRemaining: 10,
         xp: 0,
         level: NeroLevel.NEWBIE,
-        balance: 0.15,
+        balance: 0,
         network: "Movement M2",
         transactionsCount: 0,
         unlockedSkills: [],

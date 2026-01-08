@@ -29,11 +29,11 @@ root.render(
           coinbaseWallet: {
             connectionOptions: 'smartWalletOnly',
           },
-          // Nightly wallet support for Movement network
+          // Privy automatically detects installed wallets
+          // Nightly wallet will appear if installed in the browser
         },
-        // Note: Privy primarily supports EVM chains
-        // Movement network may require custom configuration
-        // Nightly wallet can be connected via external wallet connection
+        // Privy automatically detects installed browser extension wallets
+        // When user clicks "Connect Wallet", all installed wallets including Nightly will be shown
       }}
     >
       <App />

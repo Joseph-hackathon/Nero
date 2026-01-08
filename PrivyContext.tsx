@@ -13,7 +13,6 @@ interface PrivyContextType {
   login: () => void;
   logout: () => Promise<void>;
   createWallet: () => Promise<void>;
-  connectNightly: () => Promise<string | null>;
 }
 
 const PrivyContext = createContext<PrivyContextType | undefined>(undefined);
@@ -43,58 +42,6 @@ const PrivyContextProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     await privyCreateWallet();
   };
 
-  const connectNightly = async (): Promise<string | null> => {
-    try {
-      // Check if Nightly wallet is installed
-      if (typeof window !== 'undefined') {
-        // Nightly wallet can be accessed via window.nightly or window.nightly?.aptos
-        const nightly = (window as any).nightly;
-        
-        if (!nightly) {
-          alert('Nightly 지갑이 설치되어 있지 않습니다. Nightly 지갑을 설치해주세요.');
-          window.open('https://nightly.app/', '_blank');
-          return null;
-        }
-
-        // Nightly wallet connection for Movement/Aptos network
-        // Try different connection methods based on Nightly API
-        let accounts: string[] = [];
-        
-        if (nightly.connect) {
-          // Direct connect method
-          accounts = await nightly.connect();
-        } else if (nightly.aptos?.connect) {
-          // Aptos-specific connection (Movement uses similar API)
-          const result = await nightly.aptos.connect();
-          accounts = result ? [result] : [];
-        } else if (nightly.requestAccounts) {
-          // Alternative connection method
-          accounts = await nightly.requestAccounts();
-        } else {
-          // Try to get accounts directly
-          accounts = await nightly.getAccounts?.() || [];
-        }
-        
-        if (accounts && accounts.length > 0) {
-          // Return the first account address
-          const address = accounts[0];
-          console.log('Nightly wallet connected:', address);
-          return address;
-        }
-        
-        alert('Nightly 지갑에서 계정을 가져올 수 없습니다.');
-        return null;
-      } else {
-        alert('Nightly 지갑이 설치되어 있지 않습니다.');
-        return null;
-      }
-    } catch (error: any) {
-      console.error('Nightly wallet connection error:', error);
-      alert(`Nightly 지갑 연결 실패: ${error.message || 'Unknown error'}`);
-      return null;
-    }
-  };
-
   return (
     <PrivyContext.Provider
       value={{
@@ -105,7 +52,6 @@ const PrivyContextProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         login,
         logout,
         createWallet,
-        connectNightly,
       }}
     >
       {children}
@@ -137,12 +83,11 @@ export const PrivyProvider: React.FC<{
           coinbaseWallet: {
             connectionOptions: 'smartWalletOnly',
           },
-          // Add Nightly wallet for Movement network support
-          // Nightly is a Move-compatible wallet
+          // Privy automatically detects installed wallets
+          // Nightly wallet will appear if installed in the browser
         },
-        // Note: Privy primarily supports EVM chains
-        // Movement network may require custom configuration
-        // Nightly wallet can be connected via external wallet connection
+        // Privy automatically detects installed browser extension wallets
+        // When user clicks "Connect Wallet", all installed wallets including Nightly will be shown
       }}
     >
       <PrivyContextProvider>{children}</PrivyContextProvider>

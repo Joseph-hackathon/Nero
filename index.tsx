@@ -25,6 +25,9 @@ root.render(
           createOnLogin: 'users-without-wallets',
           noPromptOnSignature: true
         },
+        // Note: Privy primarily supports EVM chains
+        // Movement network may require custom configuration
+        // For now, we'll use default settings
       }}
     >
       <App />

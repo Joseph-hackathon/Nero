@@ -1,6 +1,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { PlatformConfig } from '../types';
+import { buildCreateNFTTransaction } from '../services/nftService';
+import { usePrivy } from '../PrivyContext';
+import { logger } from '../config';
 
 interface AdminDemoViewProps {
   initialConfig: PlatformConfig;
@@ -9,7 +12,10 @@ interface AdminDemoViewProps {
 
 const AdminDemoView: React.FC<AdminDemoViewProps> = ({ initialConfig, onSave }) => {
   const [config, setConfig] = useState<PlatformConfig>(initialConfig);
+  const [isCreatingNFT, setIsCreatingNFT] = useState(false);
+  const [nftCreationStatus, setNftCreationStatus] = useState<{ success: boolean; message: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user, authenticated } = usePrivy();
 
   useEffect(() => {
     setConfig(initialConfig);
@@ -34,6 +40,57 @@ const AdminDemoView: React.FC<AdminDemoViewProps> = ({ initialConfig, onSave }) 
     onSave(config);
     // Simple alert for feedback since this is a demo
     alert("Smart Contract Config Updated! Platform settings are now live.");
+  };
+
+  const handleCreateNFT = async () => {
+    if (!authenticated || !user?.wallet?.address) {
+      alert("Please connect your wallet first");
+      return;
+    }
+
+    setIsCreatingNFT(true);
+    setNftCreationStatus(null);
+
+    try {
+      // Convert image to base64 if it's a data URL
+      let imageUri = config.nftImage;
+      if (imageUri.startsWith('data:')) {
+        // Already a data URL, use as is
+      } else {
+        // If it's a URL, we'll use it directly
+        imageUri = config.nftImage;
+      }
+
+      // Build NFT creation transaction
+      const transaction = await buildCreateNFTTransaction(
+        config.name.replace(/\s+/g, '_').toLowerCase(),
+        `Nero Agent NFT for ${config.name}`,
+        imageUri,
+        (config.feePerQuery * 1000000).toString(), // Convert to smallest unit
+        (config.feePerQuery * 1000000).toString(),
+        (config.feePerQuery * 1000000).toString()
+      );
+
+      // In production, this would be signed and submitted via Privy wallet
+      // For now, we'll simulate the transaction
+      logger.info("NFT Creation", `NFT creation transaction built: ${JSON.stringify(transaction)}`);
+      
+      setNftCreationStatus({
+        success: true,
+        message: `NFT creation transaction prepared successfully! Token: ${config.name.replace(/\s+/g, '_').toLowerCase()}`
+      });
+
+      // Clear status after 5 seconds
+      setTimeout(() => setNftCreationStatus(null), 5000);
+    } catch (error: any) {
+      logger.error("NFT Creation", error);
+      setNftCreationStatus({
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to create NFT"
+      });
+    } finally {
+      setIsCreatingNFT(false);
+    }
   };
 
   return (
@@ -104,10 +161,32 @@ const AdminDemoView: React.FC<AdminDemoViewProps> = ({ initialConfig, onSave }) 
 
               <button 
                 onClick={handleFinalize}
-                className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all"
+                className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all mb-3"
               >
                 Push Config to Protocol
               </button>
+              
+              <button 
+                onClick={handleCreateNFT}
+                disabled={isCreatingNFT}
+                className="w-full py-4 bg-green-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-green-100 hover:bg-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isCreatingNFT ? 'Creating NFT...' : 'NFT 생성하기'}
+              </button>
+              
+              {nftCreationStatus && (
+                <div className={`mt-4 p-4 rounded-xl ${
+                  nftCreationStatus.success 
+                    ? 'bg-green-50 border border-green-200' 
+                    : 'bg-red-50 border border-red-200'
+                }`}>
+                  <p className={`text-[11px] font-bold ${
+                    nftCreationStatus.success ? 'text-green-800' : 'text-red-800'
+                  }`}>
+                    {nftCreationStatus.message}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

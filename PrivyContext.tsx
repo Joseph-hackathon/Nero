@@ -79,6 +79,9 @@ export const PrivyProvider: React.FC<{
           createOnLogin: config?.embeddedWallets?.createOnLogin || "users-without-wallets",
           noPromptOnSignature: config?.embeddedWallets?.noPromptOnSignature || false,
         },
+        // Note: Privy primarily supports EVM chains
+        // Movement network may require custom configuration
+        // For now, we'll use default settings
       }}
     >
       <PrivyContextProvider>{children}</PrivyContextProvider>

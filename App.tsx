@@ -27,7 +27,7 @@ import {
 } from "./services/paymentService";
 import { logger } from "./config";
 
-const STORAGE_KEY = "nero_web_state_v6";
+const STORAGE_KEY_PREFIX = "nero_web_state_v6";
 
 const App: React.FC = () => {
   const { authenticated, user, login, logout, ready } = usePrivy();
@@ -48,9 +48,13 @@ const App: React.FC = () => {
     amount?: number;
   } | null>(null);
 
+  const getStorageKey = (walletAddress: string | null) => {
+    if (!walletAddress) return `${STORAGE_KEY_PREFIX}_guest`;
+    return `${STORAGE_KEY_PREFIX}_${walletAddress.toLowerCase()}`;
+  };
+
   const [userState, setUserState] = useState<UserState>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
+    // Always start fresh for new login
     return {
       walletAddress: null,
       freeQuestionsRemaining: 10,
@@ -67,72 +71,130 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (ready && user?.wallet?.address) {
-      setUserState((prev) => ({
-        ...prev,
-        walletAddress: user.wallet!.address,
-      }));
+      const walletAddress = user.wallet.address;
+      const storageKey = getStorageKey(walletAddress);
+      const saved = localStorage.getItem(storageKey);
+      
+      if (saved) {
+        try {
+          const savedState = JSON.parse(saved);
+          setUserState({
+            ...savedState,
+            walletAddress,
+          });
+        } catch (error) {
+          logger.error("Storage", "Failed to parse saved state, using defaults");
+          setUserState((prev) => ({
+            ...prev,
+            walletAddress,
+          }));
+        }
+      } else {
+        // New user - start fresh
+        setUserState({
+          walletAddress,
+          freeQuestionsRemaining: 10,
+          xp: 0,
+          level: NeroLevel.NEWBIE,
+          balance: 0.15,
+          network: "Movement M2",
+          transactionsCount: 0,
+          unlockedSkills: [],
+          paymentHistory: [],
+          agents: {},
+        });
+      }
     } else if (ready && !authenticated) {
-      setUserState((prev) => ({ ...prev, walletAddress: null }));
+      // Clear state on logout
+      setUserState({
+        walletAddress: null,
+        freeQuestionsRemaining: 10,
+        xp: 0,
+        level: NeroLevel.NEWBIE,
+        balance: 0.15,
+        network: "Movement M2",
+        transactionsCount: 0,
+        unlockedSkills: [],
+        paymentHistory: [],
+        agents: {},
+      });
     }
   }, [user, authenticated, ready]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(userState));
+    if (userState.walletAddress) {
+      const storageKey = getStorageKey(userState.walletAddress);
+      localStorage.setItem(storageKey, JSON.stringify(userState));
+    }
   }, [userState]);
 
   const handleUpdatePlatform = (id: string, newConfig: PlatformConfig) => {
     setDynamicPlatforms((prev) => ({ ...prev, [id]: newConfig }));
   };
 
-  const handleMintAgent = (platformId: string) => {
+  const handleMintAgent = async (platformId: string) => {
     if (!userState.walletAddress) {
       login();
       return;
     }
 
-    // Check if already minted
+    // Check if already minted for this account
     if (userState.agents[platformId]) {
       logger.debug("Mint Agent", `Agent already exists for ${platformId}`);
+      alert(`You already have a Nero Agent NFT for ${platformId}`);
       return;
     }
 
-    // Process mint payment (simulated, would use x402 in production)
-    setUserState((prev) => {
-      try {
+    try {
+      // Call actual NFT minting service
+      const platform = dynamicPlatforms[platformId];
+      const result = await mintNeroAgent(
+        userState.walletAddress,
+        platformId,
+        platform?.name || platformId
+      );
+
+      if (result.success && result.tokenId) {
         const newAgent: NeroAgent = {
           platformId,
-          tokenId: `nero_${platformId}_${Date.now()}_${Math.random()
-            .toString(36)
-            .substr(2, 9)}`,
+          tokenId: result.tokenId,
           level: NeroLevel.NEWBIE,
           xp: 0,
           mintedAt: Date.now(),
         };
 
-        // Create mint transaction
         const mintTx: PaymentHistory = {
-          id: "TX-" + Math.random().toString(36).substr(2, 6).toUpperCase(),
+          id: result.txHash || "TX-" + Math.random().toString(36).substr(2, 6).toUpperCase(),
           type: "mint",
           token: "MOVE",
           amount: 0, // Minting is free in this version
           timestamp: Date.now(),
         };
 
-        logger.info(
-          "Mint Agent",
-          `Successfully minted agent for ${platformId}`
-        );
-
-        return {
+        setUserState((prev) => ({
           ...prev,
           agents: { ...prev.agents, [platformId]: newAgent },
           paymentHistory: [mintTx, ...prev.paymentHistory].slice(0, 30),
-        } as UserState;
-      } catch (error) {
-        logger.error("Mint Agent", error);
-        return prev;
+        }));
+
+        logger.info("Mint Agent", `Successfully minted agent for ${platformId}: ${result.tokenId}`);
+        setTransactionStatus({
+          status: "success",
+          txHash: result.txHash,
+          amount: 0,
+        });
+        setTimeout(() => setTransactionStatus(null), 5000);
+      } else {
+        throw new Error(result.error || "Failed to mint NFT");
       }
-    });
+    } catch (error: any) {
+      logger.error("Mint Agent", error);
+      setTransactionStatus({
+        status: "failed",
+      });
+      alert(`Failed to mint NFT: ${error.message || "Unknown error"}`);
+      setTimeout(() => setTransactionStatus(null), 5000);
+    }
   };
 
   const processActivity = useCallback(

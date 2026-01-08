@@ -336,6 +336,49 @@ await logout();
 - App entry point: [`index.tsx`](./index.tsx)
 - Main app: [`App.tsx`](./App.tsx)
 
+### x402 Protocol (Micro-Payments)
+
+Nero uses the **x402 protocol** to enable real-time micro-payments for AI queries on Movement Network.
+
+#### Integration
+
+The x402 protocol is integrated via `services/paymentService.ts`:
+
+1. **Payment Execution**: `executePayment()` handles micro-payments by sending MOVE tokens directly to the treasury wallet via x402 endpoint.
+2. **Balance Checking**: `checkBalance()` queries Movement RPC to get the user's MOVE token balance.
+3. **Payment Validation**: `validateSufficientBalance()` ensures users have enough balance before processing payments.
+
+**Payment Flow:**
+```typescript
+// Execute payment via x402
+const result = await executePayment({
+  amount: pendingPayment.amount,
+  token: "MOVE",
+  senderWallet: userState.walletAddress,
+  recipientWallet: treasuryWallet,
+  metadata: {
+    type: "query",
+    platformId: activeDapp,
+    description: "AI query payment"
+  },
+});
+```
+
+**Key Features:**
+- **Real-time payments**: Direct MOVE transfers per query (no batching)
+- **Multi-token support**: MOVE, USDC, USDT
+- **Payment metadata**: Tracks query type, platform ID, and descriptions
+- **Balance management**: Automatic balance checking and validation
+
+**Related Files:**
+- Payment service: [`services/paymentService.ts`](./services/paymentService.ts)
+- Payment modal: [`components/PaymentModal.tsx`](./components/PaymentModal.tsx)
+- App integration: [`App.tsx`](./App.tsx) (see `handlePaymentConfirm`)
+
+**Configuration:**
+- x402 endpoint: `VITE_X402_ENDPOINT` (default: `https://x402.movement.network/api/pay`)
+- Treasury wallet: `VITE_PAYMENT_WALLET_ADDRESS`
+
 ## Target Audience
 
 ### Users

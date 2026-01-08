@@ -1,4 +1,4 @@
-# Nero: AI-Powered Web3 Companion
+# [Nero](https://nero-wu3a.vercel.app/): AI-Powered Web3 Companion
 
 **Learn Web3 as You Use It. Pay Only for Real Value.**
 

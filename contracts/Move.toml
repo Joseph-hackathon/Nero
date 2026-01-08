@@ -1,0 +1,13 @@
+[package]
+name = "nero_protocol"
+version = "1.0.0"
+
+[addresses]
+nero_protocol = "0xa80a604da323c1c33cb6f8cd57ad36647787ed485ed80b271e4bbbf38577c3a1"
+
+[dependencies]
+AptosFramework = { git = "https://github.com/aptos-labs/aptos-core.git", subdir = "aptos-move/framework/aptos-framework", rev = "aptos-node-v1.10.0" }
+AptosTokenObjects = { git = "https://github.com/aptos-labs/aptos-core.git", subdir = "aptos-move/framework/aptos-token-objects", rev = "aptos-node-v1.10.0" }
+AptosStdlib = { git = "https://github.com/aptos-labs/aptos-core.git", subdir = "aptos-move/framework/aptos-stdlib", rev = "aptos-node-v1.10.0" }
+
+[dev-dependencies]

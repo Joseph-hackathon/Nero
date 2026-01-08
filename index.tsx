@@ -13,7 +13,7 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <PrivyProvider
-      appId="nero-companion-prod"
+      appId={import.meta.env.VITE_PRIVY_APP_ID || "cmjwevmi40382ih0bcxl3nqoz"}
       config={{
         loginMethods: ['email', 'wallet', 'google'],
         appearance: {

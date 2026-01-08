@@ -18,17 +18,17 @@ export interface AppConfig {
 }
 
 const getEnvironmentConfig = (): AppConfig => {
-  const env = process.env.NODE_ENV || "development";
+  const env = import.meta.env.MODE || "development";
   const isProd = env === "production";
 
   return {
-    apiKey: process.env.API_KEY || "",
+    apiKey: import.meta.env.VITE_API_KEY || "",
     neroTreasury:
-      process.env.NERO_TREASURY || "0x0000000000000000000000000000000000000001",
+      import.meta.env.VITE_PAYMENT_WALLET_ADDRESS || "0xa80a604da323c1c33cb6f8cd57ad36647787ed485ed80b271e4bbbf38577c3a1",
     x402Endpoint:
-      process.env.X402_ENDPOINT || "https://x402.movement.network/api/pay",
+      import.meta.env.VITE_X402_ENDPOINT || "https://x402.movement.network/api/pay",
     movementRpc:
-      process.env.MOVEMENT_RPC || "https://mainnet.movement.network/v1",
+      import.meta.env.VITE_MOVEMENT_RPC_URL || "https://testnet.movementlabs.xyz",
     environment: isProd
       ? "production"
       : env === "staging"

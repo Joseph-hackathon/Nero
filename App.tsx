@@ -30,7 +30,7 @@ import { logger } from "./config";
 const STORAGE_KEY_PREFIX = "nero_web_state_v6";
 
 const App: React.FC = () => {
-  const { authenticated, user, login, logout, ready } = usePrivy();
+  const { authenticated, user, login, logout, ready, connectNightly } = usePrivy();
   const [activeTab, setActiveTab] = useState<
     "home" | "demo" | "widget" | "pricing"
   >("home");
@@ -446,12 +446,32 @@ const App: React.FC = () => {
                   </button>
                 </div>
               ) : (
-                <button
-                  onClick={login}
-                  className="bg-indigo-600 text-white px-5 py-2 rounded-full font-bold text-[13px] hover:bg-indigo-700 transition-shadow shadow-lg shadow-indigo-100"
-                >
-                  Get Started
-                </button>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={login}
+                    className="bg-indigo-600 text-white px-5 py-2 rounded-full font-bold text-[13px] hover:bg-indigo-700 transition-shadow shadow-lg shadow-indigo-100"
+                  >
+                    Get Started
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const address = await connectNightly();
+                      if (address) {
+                        setUserState((prev) => ({
+                          ...prev,
+                          walletAddress: address,
+                        }));
+                      }
+                    }}
+                    className="bg-purple-600 text-white px-4 py-2 rounded-full font-bold text-[13px] hover:bg-purple-700 transition-shadow shadow-lg shadow-purple-100 flex items-center space-x-1.5"
+                    title="Connect Nightly Wallet"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    <span>Nightly</span>
+                  </button>
+                </div>
               )}
             </nav>
           </div>

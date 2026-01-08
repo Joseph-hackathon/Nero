@@ -25,9 +25,15 @@ root.render(
           createOnLogin: 'users-without-wallets',
           noPromptOnSignature: true
         },
+        externalWallets: {
+          coinbaseWallet: {
+            connectionOptions: 'smartWalletOnly',
+          },
+          // Nightly wallet support for Movement network
+        },
         // Note: Privy primarily supports EVM chains
         // Movement network may require custom configuration
-        // For now, we'll use default settings
+        // Nightly wallet can be connected via external wallet connection
       }}
     >
       <App />
